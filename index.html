@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forte Vision — контроль кассовых операций</title>
+  <style>
+    :root{--ink:#12222b;--muted:#71818a;--line:#dfe8e9;--paper:#f4f8f7;--green:#08796c;--deep:#063e3b;--orange:#f0a447}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);font:15px/1.5 Inter,Segoe UI,Arial,sans-serif;color:var(--ink)}
+    header{background:linear-gradient(115deg,#063e3b,#08796c);color:#fff;padding:24px max(calc((100vw - 1080px)/2),24px);display:flex;justify-content:space-between;align-items:center}
+    .brand{font-size:18px;font-weight:750;letter-spacing:.01em}.brand span{color:#9de1c9}.tag{font-size:12px;color:#ceeee2;letter-spacing:.1em;text-transform:uppercase}
+    main{max-width:1080px;margin:46px auto;padding:0 24px}.intro{margin-bottom:28px}.intro h1{font-size:34px;line-height:1.15;margin:0 0 12px;letter-spacing:-.03em}.intro p{color:var(--muted);margin:0;max-width:730px}
+    .layout{display:grid;grid-template-columns:370px 1fr;gap:22px;align-items:start}.panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 10px 30px #123b3b0a}
+    label{display:block;font-weight:650;margin:0 0 8px}.field{margin:0 0 18px}.field input[type=text],.field input[type=password]{width:100%;padding:12px 13px;border:1px solid #cfdbdc;border-radius:9px;font:inherit}.filebox{display:block;padding:22px 16px;border:1px dashed #9bb9b5;border-radius:12px;text-align:center;background:#f8fbfa;cursor:pointer}.filebox strong{display:block;color:var(--deep);margin-bottom:4px}.filebox small{color:var(--muted)}.filebox input{display:none}
+    button{width:100%;border:0;border-radius:9px;padding:13px 16px;background:var(--green);color:#fff;font:700 15px inherit;cursor:pointer}button:disabled{opacity:.5;cursor:wait}.hint{font-size:12px;color:var(--muted);margin:12px 0 0}.status{min-height:24px;margin-top:15px;font-size:14px;color:var(--muted)}
+    .result h2{margin:0 0 8px;font-size:20px}.empty{border:1px dashed var(--line);border-radius:12px;padding:25px;color:var(--muted);text-align:center}.verdict{font-size:13px;font-weight:700;padding:6px 10px;border-radius:20px;display:inline-block;margin:8px 0 16px}.yes{background:#fff1df;color:#85520d}.no{background:#e7f5ef;color:#17604b}.event{border-top:1px solid var(--line);padding:18px 0;display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:16px}.event:first-of-type{border-top:0}.event h3{font-size:16px;margin:0 0 6px}.time{font-variant-numeric:tabular-nums;color:var(--green);font-weight:700}.event p{margin:7px 0;color:#52616a}.event a{font-size:13px;color:var(--green)}.event img{width:100%;border-radius:9px;background:#edf2f1;object-fit:cover;aspect-ratio:16/9}.foot{font-size:12px;color:var(--muted);margin-top:26px}.pill{font-size:11px;color:#17604b;background:#e7f5ef;padding:3px 8px;border-radius:12px}
+    @media(max-width:800px){main{margin:30px auto}.layout{grid-template-columns:1fr}.event{grid-template-columns:1fr}.event img{max-width:460px}.intro h1{font-size:28px}}
+  </style>
+</head>
+<body>
+<header><div class="brand">FORTE <span>VISION</span></div><div class="tag">Локальный анализ видео</div></header>
+<main>
+  <section class="intro"><h1>Проверка кассовых операций</h1><p>Загрузите видео, чтобы найти визуальные фрагменты, похожие на размеченные события, и передать их сотруднику для проверки. События с оценкой ниже 45% не показываются.</p></section>
+  <div class="layout">
+    <section class="panel">
+      <div class="field"><label for="key">API-ключ</label><input id="key" type="password" autocomplete="off" placeholder="Введите X-API-Key"><p class="hint">Ключ хранится только в этой вкладке браузера.</p></div>
+      <div class="field"><label>Видеозапись</label><label class="filebox"><strong id="fileName">Выберите файл .mov</strong><small>До 50 МБ · исходный файл удаляется после анализа</small><input id="video" type="file" accept=".mov,video/quicktime"></label></div>
+      <button id="submit">Начать анализ</button><div id="status" class="status" role="status"></div>
+    </section>
+    <section class="panel result"><h2>Результат анализа</h2><div id="result" class="empty">Результат появится после обработки видео.</div></section>
+  </div>
+  <p class="foot">Автоматический результат — подсказка для человека. Видео не раскрывает документы, проводки и внутренние согласования; сервис не устанавливает виновность и не распознаёт личности.</p>
+</main>
+<script>
+const keyInput=document.querySelector('#key'), videoInput=document.querySelector('#video'), submit=document.querySelector('#submit'), statusBox=document.querySelector('#status'), resultBox=document.querySelector('#result');
+keyInput.value=sessionStorage.getItem('forte-key')||'';
+videoInput.addEventListener('change',()=>document.querySelector('#fileName').textContent=videoInput.files[0]?.name||'Выберите файл .mov');
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function render(data){if(data.status==='failed')throw Error(data.error||'Обработка не удалась');const yes=data.verdict==='violation';let html=`<span class="verdict ${yes?'yes':'no'}">${yes?'Обнаружены возможные отклонения':'Нарушение не обнаружено'}</span>`;if(data.model_quality?.warning)html+=`<p class="hint">${esc(data.model_quality.warning)} Валидация: precision ${Math.round((data.model_quality.precision||0)*100)}%, recall ${Math.round((data.model_quality.recall||0)*100)}% на ${data.model_quality.validation_video_groups||'?'} отложенных видео.</p>`;if(!data.violations?.length)html+='<p>Модель не нашла события выше установленного порога.</p>';for(const v of data.violations||[]){const f=v.evidence_frames?.[0],src=f?'data:image/jpeg;base64,'+f.image_base64:'';html+=`<article class="event"><div><h3>${esc(v.type)} <span class="pill">${Math.round((v.confidence||0)*100)}%</span></h3><div class="time">${Number(v.timecode_sec).toFixed(1)} сек.</div><p>${esc(v.description)}</p><a target="_blank" rel="noreferrer" href="${esc(v.rule?.url||'#')}">${esc(v.rule?.title||'Источник')}</a><p class="hint">${esc(v.rule?.section||'')}</p><p class="hint">${esc(v.rule?.scope_note||'')}</p></div>${src?`<img alt="Кадр-доказательство ${Number(v.timecode_sec).toFixed(1)} сек." src="${src}">`:''}</article>`}resultBox.className='';resultBox.innerHTML=html}
+submit.addEventListener('click',async()=>{const file=videoInput.files[0],key=keyInput.value.trim();if(!key){statusBox.textContent='Введите API-ключ.';return}if(!file){statusBox.textContent='Сначала выберите видео .mov.';return}if(!file.name.toLowerCase().endsWith('.mov')){statusBox.textContent='Формат должен быть .mov.';return}sessionStorage.setItem('forte-key',key);submit.disabled=true;resultBox.className='empty';resultBox.textContent='Ожидаем результат…';try{const fd=new FormData();fd.append('file',file);const start=await fetch('/api/v1/analyze',{method:'POST',headers:{'X-API-Key':key},body:fd});const first=await start.json();if(!start.ok)throw Error(first.detail||'Ошибка загрузки');statusBox.textContent=`Видео принято · задание ${first.job_id}`;for(let i=0;i<300;i++){await new Promise(r=>setTimeout(r,1000));const res=await fetch('/api/v1/jobs/'+encodeURIComponent(first.job_id),{headers:{'X-API-Key':key}});const data=await res.json();if(!res.ok)throw Error(data.detail||'Ошибка статуса');if(data.status==='done'){render(data);statusBox.textContent='Анализ завершён';return}if(data.status==='failed')throw Error(data.error||'Обработка не удалась');statusBox.textContent=`Анализируем видео… ${i+1} сек.`}throw Error('Истекло время ожидания (5 минут)')}catch(e){statusBox.textContent=e.message;resultBox.className='empty';resultBox.textContent='Проверьте ключ, модель и файл; затем попробуйте ещё раз.'}finally{submit.disabled=false}});
+</script>
+</body>
+</html>
+
