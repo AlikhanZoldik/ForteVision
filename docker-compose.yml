@@ -1,0 +1,11 @@
+services:
+  forte-vision:
+    build: .
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/srv/forte-vision/data
+      - ./models:/srv/forte-vision/models
+    restart: unless-stopped
+

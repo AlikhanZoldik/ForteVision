@@ -1,0 +1,6 @@
+.env
+data/uploads/*
+data/jobs.sqlite3*
+__pycache__/
+*.pyc
+
